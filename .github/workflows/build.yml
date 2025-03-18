@@ -6,24 +6,31 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      python-version:
+        description: 'Python version to build with'
+        required: true
+        default: '3.11'
+        type: string
+      toolset-version:
+        description: 'Visual Studio toolset to build with (v142 or v143)'
+        required: true
+        default: 'v143'
+        type: string
 
 jobs:
   build:
     runs-on: windows-latest
-    strategy:
-      matrix:
-        python-version: ['3.11', '3.12']
-        toolset: ['v143']
-
+    
     steps:
     - uses: actions/checkout@v3
       with:
         lfs: true
 
-    - name: Set up Python ${{ matrix.python-version }}
+    - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: ${{ github.event.inputs.python-version || '3.11' }}
 
     - name: Install SWIG
       run: |
@@ -36,21 +43,30 @@ jobs:
       run: |
         mkdir -p dnacalib/build
         cd dnacalib/build
-        cmake -T ${{ matrix.toolset }} -DPYTHON3_EXACT_VERSION=${{ matrix.python-version }} -DDNAC_LIBRARY_TYPE=SHARED ..
+        cmake -T ${{ github.event.inputs.toolset-version || 'v143' }} -DPYTHON3_EXACT_VERSION=${{ github.event.inputs.python-version || '3.11' }} -DDNAC_LIBRARY_TYPE=SHARED ..
 
     - name: Build
       run: |
         cd dnacalib/build
         cmake --build . --config Release
 
+    - name: Find and collect required files
+      shell: powershell
+      run: |
+        $buildDir = "dnacalib/build"
+        $outputDir = "dna-build-output"
+        mkdir -p $outputDir
+        
+        # Find and copy the required files
+        Get-ChildItem -Path $buildDir -Recurse -Include "_py3dna.pyd", "_py3dnacalib.pyd", "dna.py", "dnacalib.dll", "dnacalib.py" | 
+        ForEach-Object {
+          $targetPath = Join-Path $outputDir (Split-Path -Leaf $_)
+          Copy-Item $_.FullName -Destination $targetPath
+          Write-Output "Copied $($_.Name) to output directory"
+        }
+
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: dna-calibration-${{ matrix.python-version }}-${{ matrix.toolset }}
-        path: |
-          dnacalib/build/**/*.dll
-          dnacalib/build/**/*.lib
-          dnacalib/build/**/*.pyd
-          dnacalib/build/**/*.so
-          dnacalib/build/**/*.dylib
-          dnacalib/build/**/*.exe 
+        name: dna-calibration-${{ github.event.inputs.python-version || '3.11' }}-${{ github.event.inputs.toolset-version || 'v143' }}
+        path: dna-build-output 
