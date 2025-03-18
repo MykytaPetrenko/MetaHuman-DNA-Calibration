@@ -44,7 +44,7 @@ jobs:
         cmake --build . --config Release
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: dna-calibration-${{ matrix.python-version }}-${{ matrix.toolset }}
         path: dnacalib/build 
