@@ -12,8 +12,8 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        python-version: ['3.7', '3.9']
-        toolset: ['v142', 'v143']
+        python-version: ['3.11', '3.12']
+        toolset: ['v143']
 
     steps:
     - uses: actions/checkout@v3
@@ -47,4 +47,10 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: dna-calibration-${{ matrix.python-version }}-${{ matrix.toolset }}
-        path: dnacalib/build 
+        path: |
+          dnacalib/build/**/*.dll
+          dnacalib/build/**/*.lib
+          dnacalib/build/**/*.pyd
+          dnacalib/build/**/*.so
+          dnacalib/build/**/*.dylib
+          dnacalib/build/**/*.exe 
