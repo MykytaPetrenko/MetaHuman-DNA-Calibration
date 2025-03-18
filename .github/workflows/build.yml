@@ -1,0 +1,50 @@
+name: Build MetaHuman DNA Calibration
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        python-version: ['3.7', '3.9']
+        toolset: ['v142', 'v143']
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        lfs: true
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install SWIG
+      run: |
+        choco install swig -y
+
+    - name: Install CMake
+      uses: lukka/get-cmake@latest
+
+    - name: Configure CMake
+      run: |
+        mkdir -p dnacalib/build
+        cd dnacalib/build
+        cmake -T ${{ matrix.toolset }} -DPYTHON3_EXACT_VERSION=${{ matrix.python-version }} -DDNAC_LIBRARY_TYPE=SHARED ..
+
+    - name: Build
+      run: |
+        cd dnacalib/build
+        cmake --build . --config Release
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: dna-calibration-${{ matrix.python-version }}-${{ matrix.toolset }}
+        path: dnacalib/build 
